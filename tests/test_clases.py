@@ -1,9 +1,12 @@
-import sys
 import unittest
 from io import StringIO
 from unittest.mock import patch
+from contextlib import redirect_stdout
+
 
 import pytest
+
+
 
 from src.clases import BaseProduct, Category, LawnGrass, Product, Smartphone
 
@@ -26,12 +29,11 @@ class TestProduct(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.product.price = -10.0
 
-    @patch("builtins.input", return_value="y")  # Мок для input, возвращающий 'y'
+    @patch('builtins.input', return_value='y')  # Мок для input, возвращающий 'y'
     def test_price_setter_decrease_confirmation(self, mock_input):
         captured_output = StringIO()
-        sys.stdout = captured_output
-        self.product.price = 50.0  # Уменьшаем цену
-        sys.stdout = sys.__stdout__
+        with redirect_stdout(captured_output):  # Безопасное перенаправление stdout
+            self.product.price = 50.0  # Уменьшаем цену
         output = captured_output.getvalue()
         print(output)  # Для отладки: выводим захваченный вывод
         self.assertIn("Цена снижается. Подтвердите действие (y/n):", output)
