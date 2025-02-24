@@ -30,6 +30,8 @@ class LoggingMixin:
 
 class Product(LoggingMixin, BaseProduct):
     def __init__(self, name: str, description: str, price: float, quantity: int):
+        if quantity == 0:
+            raise ValueError("Товар с нулевым количеством не может быть добавлен")
         super().__init__(name, description, price, quantity)
 
     @property
@@ -42,7 +44,10 @@ class Product(LoggingMixin, BaseProduct):
             raise ValueError("Цена не должна быть нулевая или отрицательная")
 
         if hasattr(self, "_price") and value < self._price:
-            confirmation = input("Цена снижается. Подтвердите действие (y/n): ")
+            print(
+                "Цена снижается. Подтвердите действие (y/n):"
+            )  # Убедитесь, что это сообщение выводится
+            confirmation = input()
             if confirmation.lower() != "y":
                 return
 
@@ -65,37 +70,41 @@ class Category:
         self.name = name
         self.description = description
         self.__products = products or []
-
         Category.total_categories += 1
         Category.total_products += len(self.__products)
 
     def add_product(self, product: Product):
         if not isinstance(product, Product):
             raise TypeError("Можно добавлять только объекты Product")
+        if product.quantity == 0:
+            raise ZeroQuantityError()
         self.__products.append(product)
         Category.total_products += 1
+        print(f"Товар {product.name} успешно добавлен.")
+        print("Обработка добавления товара завершена.")
 
     def __str__(self):
         return f"{self.name}, количество продуктов: {sum(p.quantity for p in self.__products)} шт."
 
     def get_products(self) -> list[Product]:
-        """
-        Возвращает список товаров в категории.
-        """
         return self.__products
 
     @property
     def products(self) -> str:
-        """
-        Геттер для получения списка товаров в виде строки.
-        """
         return "\n".join(str(product) for product in self.__products)
 
     def __iter__(self):
-        """
-        Возвращает итератор для товаров категории.
-        """
         return CategoryIterator(self)
+
+    def average_price(self) -> float:
+        try:
+            total_price = sum(
+                product.price * product.quantity for product in self.__products
+            )
+            total_quantity = sum(product.quantity for product in self.__products)
+            return total_price / total_quantity
+        except ZeroDivisionError:
+            return 0
 
 
 class CategoryIterator:
@@ -176,3 +185,10 @@ class LawnGrass(Product):
         Строковое представление травы газонной.
         """
         return f"{self.name}, {self.price} руб. Остаток: {self.quantity} шт. (Страна: {self.country}, Цвет: {self.color})"
+
+
+class ZeroQuantityError(Exception):
+    """Исключение для товаров с нулевым количеством."""
+
+    def __init__(self, message="Товар с нулевым количеством не может быть добавлен"):
+        super().__init__(message)
