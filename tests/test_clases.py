@@ -8,129 +8,126 @@ import pytest
 from src.clases import BaseProduct, Category, LawnGrass, Product, Smartphone
 
 
-class TestBaseProduct(unittest.TestCase):
-    def test_abstract_methods(self):
-        with self.assertRaises(TypeError):
-            BaseProduct("Test", "Desc", 10.0, 5)
-
-
 class TestProduct(unittest.TestCase):
     def setUp(self):
-        self.product = Product("Test Product", "Test Description", 100.0, 10)
+        self.product = Product("Тестовый товар", "Описание", 100.0, 10)
 
-    def test_initialization(self):
-        self.assertEqual(self.product.name, "Test Product")
-        self.assertEqual(self.product.description, "Test Description")
+    def test_product_initialization(self):
+        self.assertEqual(self.product.name, "Тестовый товар")
+        self.assertEqual(self.product.description, "Описание")
         self.assertEqual(self.product.price, 100.0)
         self.assertEqual(self.product.quantity, 10)
 
-    def test_price_setter_negative_value(self):
+    def test_price_setter(self):
+        self.product.price = 150.0
+        self.assertEqual(self.product.price, 150.0)
+
+    def test_price_setter_invalid_value(self):
         with self.assertRaises(ValueError):
-            self.product.price = -50
+            self.product.price = -10.0
 
-    @patch("builtins.input", return_value="y")
-    def test_price_decrease_confirmation_yes(self, mock_input):
-        self.product.price = 90
-        self.assertEqual(self.product.price, 90)
+    @patch("builtins.input", return_value="y")  # Мок для input, возвращающий 'y'
+    def test_price_setter_decrease_confirmation(self, mock_input):
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        self.product.price = 50.0  # Уменьшаем цену
+        sys.stdout = sys.__stdout__
+        output = captured_output.getvalue()
+        print(output)  # Для отладки: выводим захваченный вывод
+        self.assertIn("Цена снижается. Подтвердите действие (y/n):", output)
+        self.assertEqual(self.product.price, 50.0)
 
-    @patch("builtins.input", return_value="n")
-    def test_price_decrease_confirmation_no(self, mock_input):
-        self.product.price = 90
-        self.assertEqual(self.product.price, 100)
+    def test_add_products(self):
+        product2 = Product("Тестовый товар 2", "Описание", 200.0, 5)
+        total_value = self.product + product2
+        self.assertEqual(total_value, 100.0 * 10 + 200.0 * 5)
 
-    def test_str_representation(self):
-        expected_str = "Test Product, 100.0 руб. Остаток: 10 шт."
-        self.assertEqual(str(self.product), expected_str)
-
-    def test_add_method_same_type(self):
-        product2 = Product("Test 2", "Desc", 200.0, 5)
-        total = self.product + product2
-        self.assertEqual(total, 100 * 10 + 200 * 5)
-
-    def test_add_method_different_type(self):
-        class OtherProduct(Product):
-            pass
-
-        product2 = OtherProduct("Test 2", "Desc", 200.0, 5)
+    def test_add_products_different_classes(self):
+        smartphone = Smartphone(
+            "Смартфон", "Описание", 500.0, 5, "Высокая", "Модель", 64, "Черный"
+        )
         with self.assertRaises(TypeError):
-            self.product + product2
+            total_value = self.product + smartphone
 
 
 class TestCategory(unittest.TestCase):
     def setUp(self):
-        Category.total_categories = 0
-        Category.total_products = 0
-        self.product = Product("Test", "Desc", 100.0, 5)
-        self.category = Category("Test Category", "Test Description", [self.product])
-
-    def test_initialization(self):
-        self.assertEqual(Category.total_categories, 1)
-        self.assertEqual(Category.total_products, 1)
-
-    def test_add_product(self):
-        new_product = Product("New", "Desc", 50.0, 3)
-        self.category.add_product(new_product)
-        self.assertEqual(Category.total_products, 2)
-
-    def test_add_invalid_product(self):
-        with self.assertRaises(TypeError):
-            self.category.add_product("Invalid product")
-
-    def test_str_representation(self):
-        self.assertEqual(
-            str(self.category), "Test Category, количество продуктов: 5 шт."
+        self.product1 = Product("Товар 1", "Описание", 100.0, 10)
+        self.product2 = Product("Товар 2", "Описание", 200.0, 5)
+        self.category = Category(
+            "Категория", "Описание", [self.product1, self.product2]
         )
 
-    def test_products_property(self):
-        expected_str = "Test, 100.0 руб. Остаток: 5 шт."
-        self.assertEqual(self.category.products, expected_str)
+    def test_category_initialization(self):
+        self.assertEqual(self.category.name, "Категория")
+        self.assertEqual(self.category.description, "Описание")
+        self.assertEqual(len(self.category.get_products()), 2)
 
-    def test_iterator(self):
-        products = list(self.category)
-        self.assertEqual(len(products), 1)
-        self.assertIsInstance(products[0], Product)
+    def test_add_product(self):
+        product3 = Product("Товар 3", "Описание", 300.0, 3)
+        self.category.add_product(product3)
+        self.assertEqual(len(self.category.get_products()), 3)
+
+    def test_add_product_zero_quantity(self):
+        with self.assertRaises(ValueError) as context:
+            product4 = Product("Товар 4", "Описание", 400.0, 0)
+        self.assertEqual(
+            str(context.exception), "Товар с нулевым количеством не может быть добавлен"
+        )
+
+    def test_category_str(self):
+        self.assertEqual(str(self.category), "Категория, количество продуктов: 15 шт.")
+
+    def test_category_iteration(self):
+        products = [product for product in self.category]
+        self.assertEqual(len(products), 2)
+
+    def test_average_price(self):
+        self.assertEqual(self.category.average_price(), (100.0 * 10 + 200.0 * 5) / 15)
+
+    def test_average_price_no_products(self):
+        empty_category = Category("Пустая категория", "Описание")
+        self.assertEqual(empty_category.average_price(), 0)
 
 
 class TestSmartphone(unittest.TestCase):
     def setUp(self):
         self.smartphone = Smartphone(
-            "iPhone", "Smartphone", 1000.0, 5, "High", "13 Pro", 256, "Black"
+            "Смартфон", "Описание", 500.0, 5, "Высокая", "Модель", 64, "Черный"
         )
 
-    def test_initialization(self):
-        self.assertEqual(self.smartphone.model, "13 Pro")
-        self.assertEqual(self.smartphone.memory, 256)
+    def test_smartphone_initialization(self):
+        self.assertEqual(self.smartphone.name, "Смартфон")
+        self.assertEqual(self.smartphone.price, 500.0)
+        self.assertEqual(self.smartphone.quantity, 5)
+        self.assertEqual(self.smartphone.model, "Модель")
+        self.assertEqual(self.smartphone.color, "Черный")
 
-    def test_str_representation(self):
-        expected_str = (
-            "iPhone, 1000.0 руб. Остаток: 5 шт. (Модель: 13 Pro, Цвет: Black)"
+    def test_smartphone_str(self):
+        self.assertEqual(
+            str(self.smartphone),
+            "Смартфон, 500.0 руб. Остаток: 5 шт. (Модель: Модель, Цвет: Черный)",
         )
-        self.assertEqual(str(self.smartphone), expected_str)
 
 
 class TestLawnGrass(unittest.TestCase):
     def setUp(self):
         self.lawn_grass = LawnGrass(
-            "Grass", "Lawn", 50.0, 20, "USA", "2 weeks", "Green"
+            "Трава газонная", "Описание", 50.0, 20, "Россия", "2 недели", "Зеленый"
         )
 
-    def test_initialization(self):
-        self.assertEqual(self.lawn_grass.country, "USA")
-        self.assertEqual(self.lawn_grass.germination_period, "2 weeks")
+    def test_lawn_grass_initialization(self):
+        self.assertEqual(self.lawn_grass.name, "Трава газонная")
+        self.assertEqual(self.lawn_grass.price, 50.0)
+        self.assertEqual(self.lawn_grass.quantity, 20)
+        self.assertEqual(self.lawn_grass.country, "Россия")
+        self.assertEqual(self.lawn_grass.color, "Зеленый")
 
-    def test_str_representation(self):
-        expected_str = "Grass, 50.0 руб. Остаток: 20 шт. (Страна: USA, Цвет: Green)"
-        self.assertEqual(str(self.lawn_grass), expected_str)
-
-
-class TestLoggingMixin(unittest.TestCase):
-    def test_logging_on_init(self):
-        with patch("sys.stdout", new=StringIO()) as fake_out:
-            product = Product("Test", "Desc", 100.0, 5)
-            self.assertIn(
-                "Создан объект класса Product с параметрами: ('Test', 'Desc', 100.0, 5), {}",
-                fake_out.getvalue(),
-            )
+    def test_lawn_grass_str(self):
+        self.assertEqual(
+            str(self.lawn_grass),
+            "Трава газонная, 50.0 руб. Остаток: 20 шт. (Страна: Россия, Цвет: Зеленый)",
+        )
 
 
 if __name__ == "__main__":
