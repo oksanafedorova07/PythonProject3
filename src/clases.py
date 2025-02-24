@@ -44,9 +44,7 @@ class Product(LoggingMixin, BaseProduct):
             raise ValueError("Цена не должна быть нулевая или отрицательная")
 
         if hasattr(self, "_price") and value < self._price:
-            print(
-                "Цена снижается. Подтвердите действие (y/n):"
-            )  # Убедитесь, что это сообщение выводится
+            print("Цена снижается. Подтвердите действие (y/n):")  # Убедитесь, что это сообщение выводится
             confirmation = input()
             if confirmation.lower() != "y":
                 return
